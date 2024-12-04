@@ -1,0 +1,6 @@
+@IslamicHabitTracker_HostAddress = http://localhost:5030
+
+GET {{IslamicHabitTracker_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
