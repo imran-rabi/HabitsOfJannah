@@ -1,10 +1,18 @@
-public class HabitProgress
-{
-    public int ProgressID { get; set; } // Primary Key
-    public int HabitID { get; set; } // Foreign Key
-    public DateTime Date { get; set; } // Not Null
-    public bool Status { get; set; } = false; // Default: False
+using System;
 
-    // Navigation Properties
-    public Habit Habit { get; set; } = null!;
+namespace IslamicHabitTracker.Models
+{
+    public class HabitProgress
+    {
+        public int Id { get; set; }
+        public int HabitId { get; set; }
+        public DateTime Date { get; set; }
+        public int Value { get; set; }
+        public string Notes { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+
+        // Navigation property
+        public virtual Habit Habit { get; set; }
+    }
 }

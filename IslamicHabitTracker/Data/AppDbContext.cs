@@ -1,33 +1,44 @@
 using Microsoft.EntityFrameworkCore;
+using IslamicHabitTracker.Models;
 
-public class AppDbContext : DbContext
+namespace IslamicHabitTracker.Data
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
-
-    public DbSet<User> Users { get; set; }
-    public DbSet<Habit> Habits { get; set; }
-    public DbSet<HabitProgress> HabitProgress { get; set; }
-    public DbSet<Achievement> Achievements { get; set; }
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    public class AppDbContext : DbContext
     {
-        // Configure Relationships
-        modelBuilder.Entity<Habit>()
-            .HasOne(h => h.User)
-            .WithMany(u => u.Habits)
-            .HasForeignKey(h => h.UserID);
+        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) {}
 
-        modelBuilder.Entity<HabitProgress>()
-            .HasKey(hp => hp.ProgressID);
-            
-        modelBuilder.Entity<HabitProgress>()
-            .HasOne(hp => hp.Habit)
-            .WithMany(h => h.HabitProgresses)
-            .HasForeignKey(hp => hp.HabitID); 
+        public DbSet<User> Users { get; set; } = null!;
+        public DbSet<Habit> Habits { get; set; } = null!;
+        public DbSet<HabitProgress> HabitProgress { get; set; } = null!;
+        public DbSet<Achievement> Achievements { get; set; } = null!;
 
-        modelBuilder.Entity<Achievement>()
-            .HasOne(a => a.User)
-            .WithMany(u => u.Achievements)
-            .HasForeignKey(a => a.UserID);
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // Configure User
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email)
+                .IsUnique();
+
+            // Configure relationships
+            modelBuilder.Entity<Habit>()
+                .HasOne(h => h.User)
+                .WithMany(u => u.Habits)
+                .HasForeignKey(h => h.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<HabitProgress>()
+                .HasOne(p => p.Habit)
+                .WithMany(h => h.Progress)
+                .HasForeignKey(p => p.HabitId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Achievement>()
+                .HasOne(a => a.User)
+                .WithMany(u => u.Achievements)
+                .HasForeignKey(a => a.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        }
     }
 }
