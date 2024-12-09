@@ -137,14 +137,11 @@ else
     app.UseHsts();
 }
 
-// Important: The order of these middleware calls is crucial
-app.UseHttpsRedirection();
-app.UseStaticFiles();
-app.UseRouting();
-
-// CORS must be between UseRouting and UseEndpoints
+// CORS must be first in the pipeline
 app.UseCors("AllowVueApp");
 
+app.UseRouting();
+app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
