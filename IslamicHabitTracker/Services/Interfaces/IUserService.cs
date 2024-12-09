@@ -46,5 +46,12 @@ namespace IslamicHabitTracker.Services.Interfaces
         /// <param name="userId">ID of the user</param>
         /// <returns>The user</returns>
         Task<User> GetByIdAsync(int userId);
+
+        /// <summary>
+        /// Updates user's profile picture
+        /// </summary>
+        /// <param name="userId">ID of the user</param>
+        /// <param name="imageData">Binary data of the profile picture</param>
+        Task<User> UpdateProfilePictureAsync(int userId, byte[] imageData);
     }
 } 

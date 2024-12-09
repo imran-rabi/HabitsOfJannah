@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using IslamicHabitTracker.Repositories.Interfaces;
 using IslamicHabitTracker.Data;
+using Microsoft.Extensions.Logging;
 namespace IslamicHabitTracker.Repositories
 {
     /// <summary>
@@ -12,14 +13,17 @@ namespace IslamicHabitTracker.Repositories
     public class HabitRepository : IHabitRepository
     {
         private readonly AppDbContext _context;
+        private readonly ILogger<HabitRepository> _logger;
 
         /// <summary>
         /// Constructor that injects the database context
         /// </summary>
         /// <param name="context">The application's database context</param>
-        public HabitRepository(AppDbContext context)
+        /// <param name="logger">The logger for this repository</param>
+        public HabitRepository(AppDbContext context, ILogger<HabitRepository> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         /// <summary>
@@ -29,9 +33,19 @@ namespace IslamicHabitTracker.Repositories
         /// <returns>The created habit with updated ID</returns>
         public async Task<Habit> CreateAsync(Habit habit)
         {
-            await _context.Habits.AddAsync(habit);
-            await _context.SaveChangesAsync();
-            return habit;
+            _logger.LogInformation($"Creating habit: {habit.Name}");
+            try
+            {
+                _context.Habits.Add(habit);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation($"Created habit with ID: {habit.Id}");
+                return habit;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating habit");
+                throw;
+            }
         }
 
         /// <summary>

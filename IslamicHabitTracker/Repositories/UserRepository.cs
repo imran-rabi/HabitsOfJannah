@@ -41,9 +41,25 @@ namespace IslamicHabitTracker.Repositories
         /// <returns>The user if found, null otherwise</returns>
         public async Task<User> GetByIdAsync(int id)
         {
-            return await _context.Users
-                .Include(u => u.Habits)
-                .FirstOrDefaultAsync(u => u.Id == id);
+            return await GetByIdAsync(id, false);
+        }
+
+        /// <summary>
+        /// Retrieves a user by their ID
+        /// </summary>
+        /// <param name="userId">The user's ID</param>
+        /// <param name="includeHabits">Whether to include habits</param>
+        /// <returns>The user if found, null otherwise</returns>
+        public async Task<User> GetByIdAsync(int userId, bool includeHabits = false)
+        {
+            var query = _context.Users.AsQueryable();
+
+            if (includeHabits)
+            {
+                query = query.Include(u => u.Habits);
+            }
+
+            return await query.FirstOrDefaultAsync(u => u.Id == userId);
         }
 
         /// <summary>

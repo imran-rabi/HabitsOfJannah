@@ -12,6 +12,7 @@ namespace IslamicHabitTracker.Models
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public DateTime? LastLoginAt { get; set; }
+        public byte[]? ProfilePicture { get; set; }
 
         // Navigation properties
         public virtual ICollection<Habit> Habits { get; set; }

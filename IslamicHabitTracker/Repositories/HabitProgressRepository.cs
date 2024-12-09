@@ -29,9 +29,9 @@ namespace IslamicHabitTracker.Repositories
         /// </summary>
         /// <param name="progress">The progress object to create</param>
         /// <returns>The created progress entry</returns>
-        public async Task<HabitProgress> RecordProgressAsync(HabitProgress progress)
+        public async Task<HabitProgress> CreateAsync(HabitProgress progress)
         {
-            await _context.HabitProgress.AddAsync(progress);
+            _context.HabitProgress.Add(progress);
             await _context.SaveChangesAsync();
             return progress;
         }
@@ -43,15 +43,15 @@ namespace IslamicHabitTracker.Repositories
         /// <param name="startDate">Start date of the range</param>
         /// <param name="endDate">End date of the range</param>
         /// <returns>List of progress entries within the date range</returns>
-        public async Task<IEnumerable<HabitProgress>> GetProgressByDateRangeAsync(
+        public async Task<List<HabitProgress>> GetProgressByDateRangeAsync(
             int habitId, 
             DateTime startDate, 
             DateTime endDate)
         {
             return await _context.HabitProgress
                 .Where(p => p.HabitId == habitId 
-                    && p.Date >= startDate 
-                    && p.Date <= endDate)
+                    && p.Date.Date >= startDate.Date 
+                    && p.Date.Date <= endDate.Date)
                 .OrderBy(p => p.Date)
                 .ToListAsync();
         }
@@ -61,7 +61,7 @@ namespace IslamicHabitTracker.Repositories
         /// </summary>
         /// <param name="progress">The progress object with updated information</param>
         /// <returns>The updated progress entry</returns>
-        public async Task<HabitProgress> UpdateProgressAsync(HabitProgress progress)
+        public async Task<HabitProgress> UpdateAsync(HabitProgress progress)
         {
             _context.HabitProgress.Update(progress);
             await _context.SaveChangesAsync();
@@ -74,7 +74,7 @@ namespace IslamicHabitTracker.Repositories
         /// <param name="habitId">The habit's ID</param>
         /// <param name="date">The specific date</param>
         /// <returns>The progress entry if found, null otherwise</returns>
-        public async Task<HabitProgress> GetProgressByDateAsync(int habitId, DateTime date)
+        public async Task<HabitProgress> GetByDateAsync(int habitId, DateTime date)
         {
             return await _context.HabitProgress
                 .FirstOrDefaultAsync(p => p.HabitId == habitId
@@ -86,7 +86,7 @@ namespace IslamicHabitTracker.Repositories
         /// </summary>
         /// <param name="id">The ID of the progress entry to delete</param>
         /// <returns>True if deletion was successful, false otherwise</returns>
-        public async Task<bool> DeleteProgressAsync(int id)
+        public async Task<bool> DeleteAsync(int id)
         {
             var progress = await _context.HabitProgress.FindAsync(id);
             if (progress == null) return false;
@@ -101,10 +101,37 @@ namespace IslamicHabitTracker.Repositories
         /// </summary>
         /// <param name="progressId">The ID of the progress entry to retrieve</param>
         /// <returns>The progress entry if found, null otherwise</returns>
-        public async Task<HabitProgress> GetProgressByIdAsync(int progressId)
+        public async Task<HabitProgress> GetByIdAsync(int progressId)
         {
             return await _context.HabitProgress
+                .Include(p => p.Habit)
                 .FirstOrDefaultAsync(p => p.Id == progressId);
+        }
+
+        /// <summary>
+        /// Retrieves progress history for a specific habit
+        /// </summary>
+        /// <param name="habitId">The habit's ID</param>
+        /// <returns>List of progress entries for the habit</returns>
+        public async Task<List<HabitProgress>> GetProgressHistoryAsync(int habitId)
+        {
+            return await _context.HabitProgress
+                .Where(p => p.HabitId == habitId)
+                .OrderByDescending(p => p.Date)
+                .ToListAsync();
+        }
+
+        /// <summary>
+        /// Retrieves all progress entries for a specific habit
+        /// </summary>
+        /// <param name="habitId">The habit's ID</param>
+        /// <returns>List of progress entries for the habit</returns>
+        public async Task<List<HabitProgress>> GetAllForHabitAsync(int habitId)
+        {
+            return await _context.HabitProgress
+                .Where(p => p.HabitId == habitId)
+                .OrderBy(p => p.Date)
+                .ToListAsync();
         }
     }
 }

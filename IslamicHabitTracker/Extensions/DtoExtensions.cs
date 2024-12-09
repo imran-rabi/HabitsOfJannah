@@ -14,7 +14,11 @@ namespace IslamicHabitTracker.Extensions
             {
                 Name = dto.Name,
                 Email = dto.Email,
-                Password = dto.Password
+                Password = dto.Password,
+                CreatedAt = DateTime.UtcNow,
+                LastLoginAt = DateTime.UtcNow,
+                Habits = new List<Habit>(),
+                Achievements = new List<Achievement>()
             };
         }
 
@@ -26,9 +30,11 @@ namespace IslamicHabitTracker.Extensions
                 Name = user.Name,
                 Email = user.Email,
                 CreatedAt = user.CreatedAt,
-                LastLoginAt = user.LastLoginAt,
+                LastLoginAt = user.LastLoginAt ?? user.CreatedAt,
                 TotalHabits = user.Habits?.Count ?? 0,
-                ActiveHabits = user.Habits?.Count(h => h.IsActive) ?? 0
+                ActiveHabits = user.Habits?.Count(h => h.IsActive) ?? 0,
+                ProfilePictureUrl = user.ProfilePicture != null ? 
+                    $"data:image/jpeg;base64,{Convert.ToBase64String(user.ProfilePicture)}" : null
             };
         }
 
@@ -59,9 +65,9 @@ namespace IslamicHabitTracker.Extensions
             };
         }
 
-        public static HabitDTO ToDto(this Habit habit)
+        public static HabitResponseDTO ToHabitDto(this Habit habit)
         {
-            return new HabitDTO
+            return new HabitResponseDTO
             {
                 Id = habit.Id,
                 Name = habit.Name,
@@ -69,20 +75,39 @@ namespace IslamicHabitTracker.Extensions
                 Frequency = habit.Frequency,
                 StartDate = habit.StartDate,
                 EndDate = habit.EndDate,
+                TargetValue = habit.TargetValue,
+                ReminderTime = habit.ReminderTime,
+                Notes = habit.Notes,
                 IsActive = habit.IsActive,
                 CreatedAt = habit.CreatedAt,
                 UpdatedAt = habit.UpdatedAt,
-                RecentProgress = habit.Progress?.Select(p => p.ToDto()).ToList() ?? new List<HabitProgressDTO>()
+                TodayProgress = habit.Progress?
+                    .Where(p => p.Date.Date == DateTime.UtcNow.Date)
+                    .Select(p => p.ToDto())
+                    .FirstOrDefault(),
+                RecentProgress = habit.Progress?
+                    .OrderByDescending(p => p.Date)
+                    .Take(7)
+                    .Select(p => p.ToDto())
+                    .ToList() ?? new List<HabitProgressDTO>()
             };
+        }
+
+        public static List<HabitResponseDTO> ToHabitDtos(this IEnumerable<Habit> habits)
+        {
+            return habits.Select(h => h.ToHabitDto()).ToList();
         }
 
         public static HabitProgressDTO ToDto(this HabitProgress progress)
         {
             return new HabitProgressDTO
             {
+                HabitId = progress.HabitId,
                 Date = progress.Date,
+                Type = progress.Type,
                 Value = progress.Value,
-                Notes = progress.Notes
+                Notes = progress.Notes,
+                Mood = progress.Mood
             };
         }
 
@@ -91,8 +116,7 @@ namespace IslamicHabitTracker.Extensions
             return new HabitProgress
             {
                 Value = dto.Value,
-                Notes = dto.Notes,
-                UpdatedAt = DateTime.UtcNow
+                Notes = dto.Notes
             };
         }
 
@@ -132,11 +156,6 @@ namespace IslamicHabitTracker.Extensions
         public static IEnumerable<AchievementDTO> ToDtos(this IEnumerable<Achievement> achievements)
         {
             return achievements.Select(a => a.ToDto());
-        }
-
-        public static IEnumerable<HabitDTO> ToDtos(this IEnumerable<Habit> habits)
-        {
-            return habits.Select(h => h.ToDto());
         }
     }
 } 

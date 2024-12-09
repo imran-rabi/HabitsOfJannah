@@ -1,38 +1,43 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuth } from '@/stores/auth'
 import Home from '../views/Home.vue'
+import Achievements from '@/views/achievements/Achievements.vue'
 
 const routes = [
   {
     path: '/',
-    name: 'Home',
-    component: Home
+    name: 'home',
+    component: Home,
+    meta: { requiresAuth: true }
   },
   {
     path: '/auth/login',
-    name: 'Login',
-    component: () => import('../views/auth/Login.vue')
+    name: 'login',
+    component: () => import('../views/auth/Login.vue'),
+    meta: { requiresGuest: true }
   },
   {
     path: '/auth/register',
-    name: 'Register',
-    component: () => import('../views/auth/Register.vue')
+    name: 'register',
+    component: () => import('../views/auth/Register.vue'),
+    meta: { requiresGuest: true }
   },
   {
     path: '/habits',
-    name: 'Habits',
+    name: 'habits',
     component: () => import('../views/habits/HabitList.vue'),
     meta: { requiresAuth: true }
   },
   {
-    path: '/achievements',
-    name: 'Achievements',
-    component: () => import('../views/achievements/AchievementList.vue'),
+    path: '/profile',
+    name: 'profile',
+    component: () => import('../views/profile/UserProfile.vue'),
     meta: { requiresAuth: true }
   },
   {
-    path: '/profile',
-    name: 'Profile',
-    component: () => import('../views/profile/UserProfile.vue'),
+    path: '/achievements',
+    name: 'achievements',
+    component: Achievements,
     meta: { requiresAuth: true }
   }
 ]
@@ -42,10 +47,16 @@ const router = createRouter({
   routes
 })
 
+// Navigation guard
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token')
-  if (to.meta.requiresAuth && !token) {
+  const auth = useAuth()
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+  const requiresGuest = to.matched.some(record => record.meta.requiresGuest)
+
+  if (requiresAuth && !auth.isAuthenticated) {
     next('/auth/login')
+  } else if (requiresGuest && auth.isAuthenticated) {
+    next('/habits')
   } else {
     next()
   }

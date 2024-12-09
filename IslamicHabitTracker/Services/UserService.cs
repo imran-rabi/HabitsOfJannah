@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using IslamicHabitTracker.Services.Interfaces;
 using IslamicHabitTracker.Helpers.Interfaces;
 using BC = BCrypt.Net.BCrypt;
+using Microsoft.Extensions.Logging;
 
 namespace IslamicHabitTracker.Services
 {
@@ -15,16 +16,19 @@ namespace IslamicHabitTracker.Services
     {
         private readonly IUserRepository _userRepository;
         private readonly IJwtHelper _jwtHelper;
+        private readonly ILogger<UserService> _logger;
 
         /// <summary>
         /// Constructor for UserService
         /// </summary>
         /// <param name="userRepository">Repository for user data access</param>
         /// <param name="jwtHelper">Helper for JWT token operations</param>
-        public UserService(IUserRepository userRepository, IJwtHelper jwtHelper)
+        /// <param name="logger">Logger for logging</param>
+        public UserService(IUserRepository userRepository, IJwtHelper jwtHelper, ILogger<UserService> logger)
         {
             _userRepository = userRepository;
             _jwtHelper = jwtHelper;
+            _logger = logger;
         }
 
         /// <summary>
@@ -41,12 +45,10 @@ namespace IslamicHabitTracker.Services
                 throw new InvalidOperationException("Email already registered");
             }
 
-            // Hash the password before saving
+            // Set default values for new user using local time
+            user.CreatedAt = DateTime.Now;
+            user.LastLoginAt = DateTime.Now;
             user.Password = BC.HashPassword(user.Password);
-            
-            // Set default values for new user
-            user.CreatedAt = DateTime.UtcNow;
-            user.LastLoginAt = DateTime.UtcNow;
 
             // Save the user
             var createdUser = await _userRepository.CreateAsync(user);
@@ -129,12 +131,37 @@ namespace IslamicHabitTracker.Services
         /// <returns>The user</returns>
         public async Task<User> GetByIdAsync(int userId)
         {
+            _logger.LogInformation($"Getting user by ID: {userId}");
+            try
+            {
+                var user = await _userRepository.GetByIdAsync(userId, includeHabits: true);
+                _logger.LogInformation($"User found: {user?.Name ?? "null"}");
+                return user;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error getting user by ID: {userId}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Updates user's profile picture
+        /// </summary>
+        /// <param name="userId">ID of the user</param>
+        /// <param name="imageData">Binary data of the profile picture</param>
+        public async Task<User> UpdateProfilePictureAsync(int userId, byte[] imageData)
+        {
             var user = await _userRepository.GetByIdAsync(userId);
             if (user == null)
             {
                 throw new InvalidOperationException("User not found");
             }
-            return user;
+
+            user.ProfilePicture = imageData;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            return await _userRepository.UpdateAsync(user);
         }
     }
 } 

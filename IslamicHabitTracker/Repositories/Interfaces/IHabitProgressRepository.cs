@@ -15,7 +15,7 @@ namespace IslamicHabitTracker.Repositories.Interfaces
         /// </summary>
         /// <param name="progress">The progress object to create</param>
         /// <returns>The created progress entry</returns>
-        Task<HabitProgress> RecordProgressAsync(HabitProgress progress);
+        Task<HabitProgress> CreateAsync(HabitProgress progress);
 
         /// <summary>
         /// Retrieves progress for a specific habit within a date range
@@ -24,7 +24,7 @@ namespace IslamicHabitTracker.Repositories.Interfaces
         /// <param name="startDate">Start date of the range</param>
         /// <param name="endDate">End date of the range</param>
         /// <returns>List of progress entries within the date range</returns>
-        Task<IEnumerable<HabitProgress>> GetProgressByDateRangeAsync(
+        Task<List<HabitProgress>> GetProgressByDateRangeAsync(
             int habitId,
             DateTime startDate,
             DateTime endDate);
@@ -34,7 +34,7 @@ namespace IslamicHabitTracker.Repositories.Interfaces
         /// </summary>
         /// <param name="progress">The progress object with updated information</param>
         /// <returns>The updated progress entry</returns>
-        Task<HabitProgress> UpdateProgressAsync(HabitProgress progress);
+        Task<HabitProgress> UpdateAsync(HabitProgress progress);
 
         /// <summary>
         /// Retrieves progress for a specific date and habit
@@ -42,20 +42,34 @@ namespace IslamicHabitTracker.Repositories.Interfaces
         /// <param name="habitId">The habit's ID</param>
         /// <param name="date">The specific date</param>
         /// <returns>The progress entry if found, null otherwise</returns>
-        Task<HabitProgress> GetProgressByDateAsync(int habitId, DateTime date);
+        Task<HabitProgress> GetByDateAsync(int habitId, DateTime date);
 
         /// <summary>
         /// Deletes a progress entry
         /// </summary>
         /// <param name="id">The ID of the progress entry to delete</param>
         /// <returns>True if deletion was successful, false otherwise</returns>
-        Task<bool> DeleteProgressAsync(int id);
+        Task<bool> DeleteAsync(int progressId);
 
         /// <summary>
         /// Retrieves progress for a specific progress entry
         /// </summary>
         /// <param name="progressId">The ID of the progress entry</param>
         /// <returns>The progress entry if found, null otherwise</returns>
-        Task<HabitProgress> GetProgressByIdAsync(int progressId);
+        Task<HabitProgress> GetByIdAsync(int progressId);
+
+        /// <summary>
+        /// Retrieves progress history for a specific habit
+        /// </summary>
+        /// <param name="habitId">The habit's ID</param>
+        /// <returns>List of progress entries for the habit</returns>
+        Task<List<HabitProgress>> GetProgressHistoryAsync(int habitId);
+
+        /// <summary>
+        /// Retrieves all progress entries for a specific habit
+        /// </summary>
+        /// <param name="habitId">The habit's ID</param>
+        /// <returns>List of all progress entries for the habit</returns>
+        Task<List<HabitProgress>> GetAllForHabitAsync(int habitId);
     }
 }

@@ -1,11 +1,11 @@
 <template>
-  <Navbar v-if="isAuthenticated" />
+  <Navbar v-if="auth.isAuthenticated" />
   <router-view></router-view>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import Navbar from './components/layout/Navbar.vue'
+import { useAuth } from '@/stores/auth'
+import Navbar from '@/components/layout/Navbar.vue'
 
-const isAuthenticated = computed(() => !!localStorage.getItem('token'))
+const auth = useAuth()
 </script>

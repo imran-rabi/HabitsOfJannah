@@ -42,5 +42,13 @@ namespace IslamicHabitTracker.Repositories.Interfaces
         /// <param name="id">The ID of the user to delete</param>
         /// <returns>True if deletion was successful, false otherwise</returns>
         Task<bool> DeleteAsync(int id);
+
+        /// <summary>
+        /// Retrieves a user by their ID with optional includeHabits parameter
+        /// </summary>
+        /// <param name="userId">The user's ID</param>
+        /// <param name="includeHabits">Whether to include habits in the query</param>
+        /// <returns>The user if found, null otherwise</returns>
+        Task<User> GetByIdAsync(int userId, bool includeHabits = false);
     }
 }

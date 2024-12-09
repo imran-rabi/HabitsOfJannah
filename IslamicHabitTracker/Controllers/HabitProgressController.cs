@@ -1,117 +1,160 @@
 using IslamicHabitTracker.DTOs;
 using IslamicHabitTracker.Services.Interfaces;
-using IslamicHabitTracker.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Threading.Tasks;
-using IslamicHabitTracker.Models;
+using IslamicHabitTracker.Extensions;
+using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace IslamicHabitTracker.Controllers
 {
     [ApiController]
     [Route("api/habits/{habitId}/progress")]
     [Authorize]
-    public class HabitProgressController : ControllerBase
+    public class HabitProgressController : BaseController
     {
         private readonly IHabitProgressService _progressService;
-        private readonly IHabitService _habitService;
+        private readonly ILogger<HabitProgressController> _logger;
 
-        public HabitProgressController(
-            IHabitProgressService progressService,
-            IHabitService habitService)
+        public HabitProgressController(IHabitProgressService progressService, ILogger<HabitProgressController> logger)
         {
             _progressService = progressService;
-            _habitService = habitService;
+            _logger = logger;
         }
 
         /// <summary>
-        /// Record progress for today
+        /// Record progress for a habit
         /// </summary>
+        /// <param name="habitId">ID of the habit</param>
+        /// <param name="progressDto">Progress details</param>
         [HttpPost]
         [ProducesResponseType(typeof(HabitProgressDTO), 201)]
-        public async Task<IActionResult> RecordProgress(
-            int habitId, 
-            [FromBody] HabitProgressDTO progressDto)
+        [ProducesResponseType(400)]
+        public async Task<IActionResult> RecordProgress(int habitId, [FromBody] HabitProgressDTO progressDto)
         {
-            var userId = User.GetUserId();
-            
-            // Verify habit belongs to user
-            await _habitService.GetByIdAsync(habitId, userId);
-
-            var progress = new HabitProgress
+            try
             {
-                HabitId = habitId,
-                Date = progressDto.Date,
-                Value = progressDto.Value,
-                Notes = progressDto.Notes,
-                CreatedAt = DateTime.UtcNow
-            };
+                _logger.LogInformation($"Starting RecordProgress for habit {habitId}");
+                _logger.LogInformation($"Request data: {JsonSerializer.Serialize(progressDto)}");
+                _logger.LogInformation($"Headers: {JsonSerializer.Serialize(Request.Headers)}");
 
-            var result = await _progressService.RecordProgressAsync(habitId, userId, progress);
-            return CreatedAtAction(
-                nameof(GetProgress), 
-                new { habitId, date = result.Date }, 
-                result.ToDto());
+                if (!ModelState.IsValid)
+                {
+                    var errors = string.Join("; ", ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage));
+                    _logger.LogWarning($"Invalid model state: {errors}");
+                    return BadRequest(new { message = errors });
+                }
+
+                var userId = User.GetUserId();
+                _logger.LogInformation($"User ID: {userId}");
+
+                var progress = await _progressService.RecordProgressAsync(habitId, userId, progressDto);
+                _logger.LogInformation($"Progress recorded with ID: {progress.Id}");
+
+                return Ok(progress.ToDto());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in RecordProgress");
+                return StatusCode(500, new { message = ex.Message });
+            }
         }
 
         /// <summary>
-        /// Get progress for a specific date
+        /// Get progress by ID
         /// </summary>
-        [HttpGet]
+        /// <param name="habitId">ID of the habit</param>
+        /// <param name="id">ID of the progress entry</param>
+        [HttpGet("{id}")]
         [ProducesResponseType(typeof(HabitProgressDTO), 200)]
-        public async Task<IActionResult> GetProgress(
-            int habitId, 
-            [FromQuery] DateTime date)
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> GetById(int habitId, int id)
         {
             var userId = User.GetUserId();
-            await _habitService.GetByIdAsync(habitId, userId);
+            var progress = await _progressService.GetProgressByIdAsync(id, userId);
+            if (progress == null || progress.HabitId != habitId)
+                return NotFound();
 
-            var progress = await _progressService.GetProgressByDateAsync(habitId, userId, date);
             return Ok(progress.ToDto());
         }
 
         /// <summary>
-        /// Update existing progress entry
+        /// Update progress entry
         /// </summary>
-        [HttpPut("{progressId}")]
+        /// <param name="habitId">ID of the habit</param>
+        /// <param name="id">ID of the progress entry</param>
+        /// <param name="progressDto">Updated progress information</param>
+        [HttpPut("{id}")]
         [ProducesResponseType(typeof(HabitProgressDTO), 200)]
-        public async Task<IActionResult> UpdateProgress(
-            int habitId,
-            int progressId, 
-            [FromBody] UpdateHabitProgressDTO updateDto)
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> Update(int habitId, int id, [FromBody] UpdateHabitProgressDTO progressDto)
         {
             var userId = User.GetUserId();
-            await _habitService.GetByIdAsync(habitId, userId);
-
-            var progress = await _progressService.GetProgressByIdAsync(progressId, userId);
-            if (progress == null || progress.HabitId != habitId)
+            var progress = await _progressService.UpdateProgressAsync(id, userId, progressDto);
+            if (progress.HabitId != habitId)
                 return NotFound();
 
-            progress.Value = updateDto.Value;
-            progress.Notes = updateDto.Notes;
-            progress.UpdatedAt = DateTime.UtcNow;
-
-            var result = await _progressService.UpdateProgressAsync(progress);
-            return Ok(result.ToDto());
+            return Ok(progress.ToDto());
         }
 
         /// <summary>
-        /// Get progress for date range
+        /// Delete progress entry
         /// </summary>
-        [HttpGet("range")]
-        [ProducesResponseType(typeof(List<HabitProgressDTO>), 200)]
-        public async Task<IActionResult> GetProgressRange(
-            int habitId,
-            [FromQuery] DateTime startDate,
-            [FromQuery] DateTime endDate)
+        /// <param name="habitId">ID of the habit</param>
+        /// <param name="id">ID of the progress entry</param>
+        [HttpDelete("{id}")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> Delete(int habitId, int id)
         {
             var userId = User.GetUserId();
-            await _habitService.GetByIdAsync(habitId, userId);
+            var result = await _progressService.DeleteProgressAsync(id, userId);
+            if (!result)
+                return NotFound();
 
-            var progress = await _progressService.GetProgressByDateRangeAsync(
-                habitId, userId, startDate, endDate);
+            return NoContent();
+        }
+
+        /// <summary>
+        /// Get today's progress
+        /// </summary>
+        /// <param name="habitId">ID of the habit</param>
+        [HttpGet("today")]
+        [ProducesResponseType(typeof(HabitProgressDTO), 200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> GetTodayProgress(int habitId)
+        {
+            var userId = User.GetUserId();
+            var progress = await _progressService.GetTodayProgressAsync(habitId, userId);
+            if (progress == null)
+                return NotFound();
+
+            return Ok(progress.ToDto());
+        }
+
+        /// <summary>
+        /// Get progress history
+        /// </summary>
+        /// <param name="habitId">ID of the habit</param>
+        [HttpGet]
+        [ProducesResponseType(typeof(HabitProgressDTO[]), 200)]
+        public async Task<IActionResult> GetHistory(int habitId)
+        {
+            var userId = User.GetUserId();
+            var progress = await _progressService.GetProgressHistoryAsync(habitId, userId);
             return Ok(progress.Select(p => p.ToDto()));
+        }
+
+        // Add OPTIONS method to handle preflight requests
+        [HttpOptions]
+        public IActionResult PreflightRoute()
+        {
+            return NoContent();
         }
     }
 }

@@ -53,14 +53,15 @@ builder.Services.AddAuthentication(options =>
 // Configure CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowSpecificOrigins",
-        builder =>
-        {
-            builder.WithOrigins("http://localhost:3000") // Add your frontend URL
-                   .AllowAnyMethod()
-                   .AllowAnyHeader()
-                   .AllowCredentials();
-        });
+    options.AddPolicy("AllowVueApp", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:5173")
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials()
+            .SetIsOriginAllowed(_ => true);
+    });
 });
 
 // Configure Swagger/OpenAPI
@@ -127,11 +128,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Islamic Habit Tracker API V1");
-        c.RoutePrefix = string.Empty; // Serve Swagger UI at application root
-    });
+    app.UseSwaggerUI();
     app.UseDeveloperExceptionPage();
 }
 else
@@ -140,8 +137,13 @@ else
     app.UseHsts();
 }
 
+// Important: The order of these middleware calls is crucial
 app.UseHttpsRedirection();
-app.UseCors("AllowSpecificOrigins");
+app.UseStaticFiles();
+app.UseRouting();
+
+// CORS must be between UseRouting and UseEndpoints
+app.UseCors("AllowVueApp");
 
 app.UseAuthentication();
 app.UseAuthorization();

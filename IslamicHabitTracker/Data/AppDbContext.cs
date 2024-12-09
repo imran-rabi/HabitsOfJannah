@@ -16,29 +16,46 @@ namespace IslamicHabitTracker.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // Configure User
-            modelBuilder.Entity<User>()
-                .HasIndex(u => u.Email)
-                .IsUnique();
+            // Configure User entity
+            modelBuilder.Entity<User>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Name).IsRequired();
+                entity.Property(e => e.Email).IsRequired();
+                entity.HasIndex(e => e.Email).IsUnique();
+                entity.Property(e => e.Password).IsRequired();
+            });
 
-            // Configure relationships
-            modelBuilder.Entity<Habit>()
-                .HasOne(h => h.User)
-                .WithMany(u => u.Habits)
-                .HasForeignKey(h => h.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<Habit>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Name).IsRequired();
+                entity.Property(e => e.Description).HasMaxLength(500);
+                entity.Property(e => e.Frequency).IsRequired();
+                entity.Property(e => e.Notes).HasMaxLength(500);
+                entity.Property(e => e.ReminderTime).HasMaxLength(10);
+                entity.Property(e => e.TargetValue).HasDefaultValue(1);
 
-            modelBuilder.Entity<HabitProgress>()
-                .HasOne(p => p.Habit)
-                .WithMany(h => h.Progress)
-                .HasForeignKey(p => p.HabitId)
-                .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.User)
+                    .WithMany(u => u.Habits)
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
 
-            modelBuilder.Entity<Achievement>()
-                .HasOne(a => a.User)
-                .WithMany(u => u.Achievements)
-                .HasForeignKey(a => a.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<HabitProgress>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Date).IsRequired();
+                entity.Property(e => e.Value).IsRequired();
+                entity.Property(e => e.Type).IsRequired();
+                entity.Property(e => e.Notes).HasMaxLength(500);
+                entity.Property(e => e.Mood).HasMaxLength(50);
+
+                entity.HasOne(e => e.Habit)
+                    .WithMany(h => h.Progress)
+                    .HasForeignKey(e => e.HabitId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
         }
     }
 }

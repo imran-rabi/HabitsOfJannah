@@ -4,6 +4,10 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using IslamicHabitTracker.Services.Interfaces;
+using IslamicHabitTracker.DTOs;
+using System.Linq;
+using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace IslamicHabitTracker.Services
 {
@@ -14,16 +18,19 @@ namespace IslamicHabitTracker.Services
     {
         private readonly IHabitRepository _habitRepository;
         private readonly IHabitProgressRepository _progressRepository;
+        private readonly ILogger<HabitService> _logger;
 
         /// <summary>
         /// Constructor for HabitService
         /// </summary>
         /// <param name="habitRepository">Repository for habit data access</param>
         /// <param name="progressRepository">Repository for habit progress data access</param>
-        public HabitService(IHabitRepository habitRepository, IHabitProgressRepository progressRepository)
+        /// <param name="logger">Logger for logging</param>
+        public HabitService(IHabitRepository habitRepository, IHabitProgressRepository progressRepository, ILogger<HabitService> logger)
         {
             _habitRepository = habitRepository;
             _progressRepository = progressRepository;
+            _logger = logger;
         }
 
         /// <summary>
@@ -31,12 +38,36 @@ namespace IslamicHabitTracker.Services
         /// </summary>
         /// <param name="habit">The habit to create</param>
         /// <returns>The created habit</returns>
-        public async Task<Habit> CreateHabitAsync(Habit habit)
+        public async Task<Habit> CreateAsync(int userId, HabitDTO habitDto)
         {
-            habit.CreatedAt = DateTime.UtcNow;
-            habit.StartDate = habit.StartDate.Date; // Normalize to start of day
+            _logger.LogInformation($"Creating habit for user {userId}: {JsonSerializer.Serialize(habitDto)}");
             
-            return await _habitRepository.CreateAsync(habit);
+            try
+            {
+                var habit = new Habit
+                {
+                    UserId = userId,
+                    Name = habitDto.Name,
+                    Description = habitDto.Description,
+                    Frequency = habitDto.Frequency,
+                    StartDate = habitDto.StartDate,
+                    EndDate = habitDto.EndDate,
+                    TargetValue = habitDto.TargetValue,
+                    ReminderTime = habitDto.ReminderTime,
+                    Notes = habitDto.Notes,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                var createdHabit = await _habitRepository.CreateAsync(habit);
+                _logger.LogInformation($"Created habit with ID: {createdHabit.Id}");
+                return createdHabit;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating habit");
+                throw;
+            }
         }
 
         /// <summary>
@@ -56,18 +87,20 @@ namespace IslamicHabitTracker.Services
         /// <param name="habitId">ID of the habit to update</param>
         /// <param name="updateHabit">Updated habit information</param>
         /// <returns>The updated habit</returns>
-        public async Task<Habit> UpdateHabitAsync(int userId, int habitId, Habit updateHabit)
+        public async Task<Habit> UpdateAsync(int habitId, int userId, HabitDTO habitDto)
         {
             var habit = await _habitRepository.GetByIdAsync(habitId);
             if (habit == null || habit.UserId != userId)
-            {
-                throw new InvalidOperationException("Habit not found or unauthorized");
-            }
+                throw new InvalidOperationException("Habit not found");
 
-            // Update allowed fields
-            habit.Name = updateHabit.Name;
-            habit.Description = updateHabit.Description;
-            habit.Frequency = updateHabit.Frequency;
+            habit.Name = habitDto.Name;
+            habit.Description = habitDto.Description;
+            habit.Frequency = habitDto.Frequency;
+            habit.StartDate = habitDto.StartDate;
+            habit.EndDate = habitDto.EndDate;
+            habit.TargetValue = habitDto.TargetValue;
+            habit.ReminderTime = habitDto.ReminderTime;
+            habit.Notes = habitDto.Notes;
             habit.UpdatedAt = DateTime.UtcNow;
 
             return await _habitRepository.UpdateAsync(habit);
@@ -230,6 +263,122 @@ namespace IslamicHabitTracker.Services
                 throw new InvalidOperationException("Habit not found or unauthorized");
             }
             return habit;
+        }
+
+        public async Task<List<Habit>> GetAllByUserIdAsync(int userId)
+        {
+            var habits = await _habitRepository.GetUserHabitsAsync(userId);
+            return habits.ToList(); // Convert IEnumerable to List
+        }
+
+        public async Task<bool> DeleteAsync(int habitId, int userId)
+        {
+            var habit = await _habitRepository.GetByIdAsync(habitId);
+            if (habit == null || habit.UserId != userId)
+                throw new InvalidOperationException("Habit not found");
+
+            return await _habitRepository.DeleteAsync(habitId);
+        }
+
+        public async Task<HabitStatsDTO> GetStatisticsAsync(int habitId, int userId)
+        {
+            var habit = await _habitRepository.GetByIdAsync(habitId);
+            if (habit == null || habit.UserId != userId)
+                throw new InvalidOperationException("Habit not found");
+
+            var progress = await _progressRepository.GetAllForHabitAsync(habitId);
+            var progressList = progress.ToList();
+
+            return new HabitStatsDTO
+            {
+                CurrentStreak = CalculateCurrentStreak(progressList),
+                BestStreak = CalculateBestStreak(progressList),
+                CompletionRate = CalculateCompletionRate(progressList),
+                TotalCheckins = progressList.Count
+            };
+        }
+
+        public async Task<List<CalendarDayDTO>> GetCalendarAsync(int habitId, int userId, DateTime startDate, DateTime endDate)
+        {
+            var habit = await _habitRepository.GetByIdAsync(habitId);
+            if (habit == null || habit.UserId != userId)
+                throw new InvalidOperationException("Habit not found");
+
+            var progress = await _progressRepository.GetProgressByDateRangeAsync(habitId, startDate.Date, endDate.Date);
+            var progressByDate = progress.ToDictionary(p => p.Date.Date);
+            
+            var calendar = new List<CalendarDayDTO>();
+            for (var date = startDate.Date; date <= endDate.Date; date = date.AddDays(1))
+            {
+                calendar.Add(new CalendarDayDTO
+                {
+                    Date = date,
+                    HasProgress = progressByDate.ContainsKey(date),
+                    Value = progressByDate.ContainsKey(date) ? progressByDate[date].Value : 0,
+                    Notes = progressByDate.ContainsKey(date) ? progressByDate[date].Notes : null
+                });
+            }
+
+            return calendar;
+        }
+
+        private int CalculateCurrentStreak(List<HabitProgress> progress)
+        {
+            if (!progress.Any()) return 0;
+
+            var streak = 0;
+            var currentDate = DateTime.UtcNow.Date;
+            var orderedProgress = progress
+                .Where(p => p.Value >= 100)
+                .OrderByDescending(p => p.Date)
+                .ToList();
+
+            foreach (var p in orderedProgress)
+            {
+                if (p.Date == currentDate || p.Date == currentDate.AddDays(-1))
+                {
+                    streak++;
+                    currentDate = p.Date.AddDays(-1);
+                }
+                else break;
+            }
+
+            return streak;
+        }
+
+        private int CalculateBestStreak(List<HabitProgress> progress)
+        {
+            if (!progress.Any()) return 0;
+
+            var bestStreak = 0;
+            var currentStreak = 0;
+            var lastDate = DateTime.MinValue;
+
+            foreach (var p in progress.Where(p => p.Value >= 100).OrderBy(p => p.Date))
+            {
+                if (lastDate == DateTime.MinValue || p.Date == lastDate.AddDays(1))
+                {
+                    currentStreak++;
+                }
+                else
+                {
+                    bestStreak = Math.Max(bestStreak, currentStreak);
+                    currentStreak = 1;
+                }
+                lastDate = p.Date;
+            }
+
+            return Math.Max(bestStreak, currentStreak);
+        }
+
+        private double CalculateCompletionRate(List<HabitProgress> progress)
+        {
+            if (!progress.Any()) return 0;
+
+            var totalDays = (DateTime.UtcNow.Date - progress.Min(p => p.Date)).Days + 1;
+            var completedDays = progress.Count(p => p.Value >= 100);
+
+            return Math.Round((double)completedDays / totalDays * 100, 2);
         }
     }
 }

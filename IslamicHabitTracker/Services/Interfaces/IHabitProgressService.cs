@@ -1,4 +1,5 @@
 using IslamicHabitTracker.Models;
+using IslamicHabitTracker.DTOs;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -17,7 +18,7 @@ namespace IslamicHabitTracker.Services.Interfaces
         /// <param name="habitId">ID of the habit</param>
         /// <param name="progress">Progress details</param>
         /// <returns>The recorded progress</returns>
-        Task<HabitProgress> RecordProgressAsync(int userId, int habitId, HabitProgress progress);
+        Task<HabitProgress> RecordProgressAsync(int habitId, int userId, HabitProgressDTO progressDto);
 
         /// <summary>
         /// Updates existing progress entry
@@ -26,7 +27,7 @@ namespace IslamicHabitTracker.Services.Interfaces
         /// <param name="progressId">ID of the progress entry</param>
         /// <param name="updateProgress">Updated progress information</param>
         /// <returns>The updated progress</returns>
-        Task<HabitProgress> UpdateProgressAsync(int userId, int progressId, HabitProgress updateProgress);
+        Task<HabitProgress> UpdateProgressAsync(int progressId, int userId, UpdateHabitProgressDTO progressDto);
 
         /// <summary>
         /// Gets progress for a habit on a specific date
@@ -41,5 +42,7 @@ namespace IslamicHabitTracker.Services.Interfaces
         Task<HabitProgress> UpdateProgressAsync(HabitProgress progress);
         Task<IEnumerable<HabitProgress>> GetProgressByDateRangeAsync(int habitId, int userId, DateTime startDate, DateTime endDate);
         Task<bool> DeleteProgressAsync(int progressId, int userId);
+        Task<List<HabitProgress>> GetProgressHistoryAsync(int habitId, int userId);
+        Task<HabitProgress> GetTodayProgressAsync(int habitId, int userId);
     }
 } 

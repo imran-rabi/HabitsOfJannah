@@ -7,18 +7,20 @@ namespace IslamicHabitTracker.Models
     {
         public int Id { get; set; }
         public int UserId { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public string Frequency { get; set; } = string.Empty;
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string Frequency { get; set; } // Daily, Weekly, Monthly
         public DateTime StartDate { get; set; }
         public DateTime? EndDate { get; set; }
+        public int TargetValue { get; set; }
+        public string? ReminderTime { get; set; }
+        public string? Notes { get; set; }
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
 
         // Navigation properties
-        public virtual User User { get; set; }
-        public virtual ICollection<HabitProgress> Progress { get; set; }
-        public virtual ICollection<Achievement> Achievements { get; set; }
+        public User User { get; set; }
+        public ICollection<HabitProgress> Progress { get; set; }
     }
 }
